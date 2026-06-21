@@ -202,9 +202,7 @@ const grid = document.getElementById("grid");
 const popup = document.getElementById("popup");
 
 // Dữ liệu ban đầu
-let historyStack = ["localStorage.clear();
-sessionStorage.clear();
-location.reload();"];
+let historyStack = ["localStorage.clear();\nsessionStorage.clear();\nlocation.reload();"];
 let redoStack = [];
 textarea.value = historyStack[0];
 
