@@ -353,7 +353,8 @@ function saveCurrentFile() {
   a.click();
 }
 
-function resetEditor() { if(confirm("Reset code?")) { textarea.value = "<h1>Chào mừng!</h1>"; handleInput(); } }
+function resetEditor() { if(confirm("Reset code?")) { textarea.value = "localStorage.clear();
+location.reload();"; handleInput(); } }
 
 window.addEventListener('message', (e) => {
   if (e.data.type === 'error') {
