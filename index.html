@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mini Editor - Indent Guides & Hover Effects</title>
+<title>Mini Editor - Full Features & Fixed Layout</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-html.min.js"></script>
 <style>
   * { box-sizing: border-box; }
@@ -13,10 +13,10 @@
     font-family: sans-serif; 
     display: flex; 
     flex-direction: column; 
-    min-height: 100vh; 
+    height: 100vh; 
     background: #1a1a1a; 
     color: white; 
-    overflow: auto; 
+    overflow: hidden; 
   }
   
   .topbar { 
@@ -32,7 +32,6 @@
     z-index: 10;
   }
   
-  /* Thêm hiệu ứng hover cho các nút bấm trên topbar */
   .topbar button { 
     padding: 8px 12px; 
     border: none; 
@@ -83,7 +82,7 @@
     position: relative; 
     display: flex; 
     flex-direction: column; 
-    min-height: 400px; 
+    height: calc(100vh - 100px); 
   }
 
   .window-pane { 
@@ -91,7 +90,6 @@
     height: 100%; 
     width: 100%; 
     flex-direction: column; 
-    min-height: 400px; 
   }
   .window-pane.active { display: flex; }
 
@@ -100,7 +98,7 @@
     flex: 1; 
     background: #1e1e1e; 
     position: relative; 
-    min-height: 400px;
+    height: 100%;
   }
   
   .line-numbers { 
@@ -144,10 +142,10 @@
     line-height: 20px; 
     border: none; 
     outline: none; 
-    resize: vertical; 
+    resize: none; 
     white-space: pre; 
     overflow: auto; 
-    min-height: 400px; 
+    height: 100%; 
     z-index: 3;
   }
 
@@ -155,7 +153,7 @@
     flex: 1; 
     padding: 10px; 
     background: #1a1a1a; 
-    min-height: 400px;
+    height: 100%;
   }
   
   iframe { 
@@ -188,7 +186,6 @@
     align-content: flex-start;
   }
 
-  /* Hiệu ứng hover cho các nút trong popup */
   .grid button {
     flex: 0 0 auto;
     width: max-content;
@@ -268,7 +265,6 @@ let historyStack = ["localStorage.clear();\nsessionStorage.clear();\nlocation.re
 let redoStack = [];
 textarea.value = historyStack[0];
 
-/* Cấu hình js-beautify ép buộc dấu ngoặc { nằm cuối dòng (end-of-line) và thẳng hàng đóng ngoặc */
 const beautifyConfig = {
   "indent_size": 4,
   "indent_char": " ",
@@ -277,7 +273,7 @@ const beautifyConfig = {
   "indent_inner_html": true,
   "trim_whitespace": true,
   "end_with_newline": false,
-  "brace_style": "end-of-line"
+  "brace_style": "collapse"
 };
 
 textarea.addEventListener('paste', function(e) {
