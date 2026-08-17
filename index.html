@@ -116,33 +116,38 @@
               z-index: 2;
             }
             
- 
-
-
-
-
-.indent-guides-layer {
-position: absolute;
-top: 0;
-left: 40px;
-right: 0;
-bottom: 0;
-pointer-events: none;
-font-family: 'Consolas', 'Courier New', monospace;
-font-size: 14px;
-line-height: 20px;
-padding: 15px 0 15px 0px; /* ← 0px = sát nhất */
-overflow: hidden;
-white-space: pre;
-color: #ff5555; /* màu đỏ giống ảnh */
-z-index: 1;
-letter-spacing: 0;
-}
-
-
-
-
-
+            
+            
+            
+            
+            .indent-guides-layer {
+            position: absolute;
+            top: 0;
+            left: 40px;
+            right: 0;
+            bottom: 0;
+            
+            pointer-events: none;
+            
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 20px;
+            
+            padding: 15px;
+            
+            overflow: hidden;
+            white-space: pre;
+            
+            color: #555;
+            z-index: 1;
+            
+            box-sizing: border-box;
+            }
+            
+            
+            
+            
+            
             textarea { 
               flex: 1; 
               background: transparent; 
@@ -390,38 +395,34 @@ function handleInput() {
 
 
 
-
-
-
-
-
 function updateUI(errorLine = null) {
-const codeLines = textarea.value.split('\n');
-const linesCount = codeLines.length;
+            const codeLines = textarea.value.split('\n');
+            const linesCount = codeLines.length;
+            
+            let lineStr = '';
+            let guideStr = '';
+            
+            for (let i = 0; i < linesCount; i++) { const lineNumber=i + 1; const currentLineText=codeLines[i] || '' ; // Số dòng lineStr +=`<div style="height:20px" class="${lineNumber === errorLine ? 'line-error' : ''}">${lineNumber}</div>`;
+            
+                // Tính số khoảng trắng đầu dòng
+                let leadingSpaces = 0;
+                for (let char of currentLineText) {
+                if (char === ' ') leadingSpaces++;
+                else break;
+                }
+            
+                const indentLevels = Math.floor(leadingSpaces / 4);
+            
+                // Luôn vẽ vạch dọc (kể cả dòng trống)
+                let lineGuides = '';
+                for (let g = 0; g < indentLevels; g++) { lineGuides +='<span style="color:#555;display:inline-block; width:4ch;">│ </span>' ; } guideStr +=`<div style="height:20px">${lineGuides}</div>`;
+                    }
+            
+                    lineNumbers.innerHTML = lineStr;
+                    indentGuides.innerHTML = guideStr;
+                    syncScroll();
+                    }
 
-let lineStr = '';
-let guideStr = '';
-
-for (let i = 0; i < linesCount; i++) { const lineNumber=i + 1; const currentLineText=codeLines[i] || '' ; // Số dòng lineStr +=`<div style="height:20px" class="${lineNumber === errorLine ? 'line-error' : ''}">${lineNumber}</div>`;
-
-    // Tính số khoảng trắng đầu dòng
-    let leadingSpaces = 0;
-    for (let char of currentLineText) {
-    if (char === ' ') leadingSpaces++;
-    else break;
-    }
-
-    const indentLevels = Math.floor(leadingSpaces / 4);
-
-    // Luôn vẽ vạch dọc (kể cả dòng trống)
-    let lineGuides = '';
-    for (let g = 0; g < indentLevels; g++) { lineGuides +='<span style="color:#555;display:inline-block; width:0.45ch; text-align:center;">│ </span>' ; } guideStr +=`<div style="height:20px">${lineGuides}</div>`;
-        }
-
-        lineNumbers.innerHTML = lineStr;
-        indentGuides.innerHTML = guideStr;
-        syncScroll();
-        }
 
 
 
