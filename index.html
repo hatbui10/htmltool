@@ -4,25 +4,22 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mini Editor - Auto Format & Spacing</title>
-        <!-- Thư viện js-beautify để hỗ trợ tự động căn chỉnh code HTML -->
+        <title>Mini Editor - Indent Guides Fixed</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-html.min.js"></script>
         <style>
             * { box-sizing: border-box; }
             
-            /* Khóa cứng màn hình, không cho body cuộn */
             body { 
               margin: 0; 
               font-family: sans-serif; 
               display: flex; 
               flex-direction: column; 
-              height: 100vh; 
+              min-height: 100vh; 
               background: #1a1a1a; 
               color: white; 
-              overflow: hidden; 
+              overflow: auto; 
             }
             
-            /* THANH CÔNG CỤ */
             .topbar { 
               display: flex; 
               gap: 6px; 
@@ -41,7 +38,6 @@
             .btn-format { background: #007acc !important; font-weight: bold; }
             .btn-run { background: #28a745 !important; margin-left: auto; font-weight: bold; padding: 8px 20px !important; }
             
-            /* HỆ THỐNG TAB */
             .tab-bar { 
               display: flex; 
               background: #252526; 
@@ -55,13 +51,12 @@
             .tab-item { padding: 8px 20px; cursor: pointer; background: #2d2d2d; color: #969696; font-size: 12px; font-weight: 500; border-radius: 5px 5px 0 0; margin-top: 5px; display: flex; align-items: center; gap: 8px; }
             .tab-item.active { background: #1e1e1e; color: #ffffff; border-bottom: 2px solid #007acc; }
             
-            /* NỘI DUNG CHÍNH */
             .main-content { 
               flex: 1; 
               position: relative; 
               display: flex; 
               flex-direction: column; 
-              min-height: 0; 
+              min-height: 400px; 
             }
             
             .window-pane { 
@@ -69,20 +64,48 @@
               height: 100%; 
               width: 100%; 
               flex-direction: column; 
-              min-height: 0; 
+              min-height: 400px; 
             }
             .window-pane.active { display: flex; }
             
-            /* EDITOR */
             .editor-container { 
               display: flex; 
               flex: 1; 
               background: #1e1e1e; 
-              overflow: hidden; 
               position: relative; 
-              min-height: 0;
+              min-height: 400px;
             }
-            .line-numbers { width: 40px; padding: 15px 0; text-align: center; background: #252526; color: #858585; font-family: monospace; font-size: 14px; line-height: 20px; user-select: none; overflow: hidden; }
+            
+            .line-numbers { 
+              width: 40px; 
+              padding: 15px 0; 
+              text-align: center; 
+              background: #252526; 
+              color: #858585; 
+              font-family: monospace; 
+              font-size: 14px; 
+              line-height: 20px; 
+              user-select: none; 
+              overflow: hidden; 
+              z-index: 2;
+            }
+            
+            .indent-guides-layer {
+              position: absolute;
+              top: 0;
+              left: 40px;
+              right: 0;
+              bottom: 0;
+              pointer-events: none;
+              font-family: 'Consolas', monospace;
+              font-size: 14px;
+              line-height: 20px;
+              padding: 15px 0 15px 15px;
+              overflow: hidden;
+              white-space: pre;
+              color: #404040;
+              z-index: 1;
+            }
             
             textarea { 
               flex: 1; 
@@ -94,18 +117,18 @@
               line-height: 20px; 
               border: none; 
               outline: none; 
-              resize: none; 
+              resize: vertical; 
               white-space: pre; 
               overflow: auto; 
+              min-height: 400px; 
+              z-index: 3;
             }
             
-            /* PREVIEW */
             #pane-preview { 
               flex: 1; 
               padding: 10px; 
               background: #1a1a1a; 
-              min-height: 0;
-              overflow: hidden;
+              min-height: 400px;
             }
             
             iframe { 
@@ -121,7 +144,6 @@
             
             #error-log { display: none; background: #4a1515; color: #ff9999; padding: 10px; font-family: monospace; font-size: 12px; flex-shrink: 0; }
             
-            /* POPUP TOOLS */
             .popup {
               display: none; position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); 
               width: 95%; background: #252526; border: 2px solid #0078d4; padding: 5px; 
@@ -164,7 +186,7 @@
             <button class="btn-reload" onclick="resetEditor()">🔄 Reset</button>
             <button class="btn-history" onclick="undo()">↩ Undo</button>
             <button class="btn-history" onclick="redo()">↪ Redo</button>
-            <button class="btn-format" onclick="formatCode()">✨ Format</button>
+            <button class="btn-format" onclick="formatAndSpaceFunctions()">✨ Phân tách hàm & Format</button>
             <button onclick="openPopup('quick')">⌨️ Phím</button>
             <button onclick="openPopup('html')">HTML</button>
             <button onclick="openPopup('css')">CSS</button>
@@ -182,6 +204,7 @@
             <div id="pane-editor" class="window-pane active">
                 <div class="editor-container">
                     <div id="line-numbers" class="line-numbers"></div>
+                    <div id="indent-guides" class="indent-guides-layer"></div>
                     <textarea id="code" spellcheck="false" oninput="handleInput()" onscroll="syncScroll()"></textarea>
                 </div>
             </div>
@@ -192,7 +215,7 @@
         </div>
 
         <div class="popup" id="popup">
-            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: con-bottom: 5px;">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                 <b id="popup-title" style="color:#007acc; font-size:12px;">TOOLS</b>
                 <span onclick="closePopup()" style="color:red; cursor:pointer; font-weight:bold; padding: 2px 8px;">[ĐÓNG]</span>
             </div>
@@ -202,6 +225,7 @@
         <script>
             const textarea = document.getElementById("code");
             const lineNumbers = document.getElementById("line-numbers");
+            const indentGuides = document.getElementById("indent-guides");
             const errorLog = document.getElementById("error-log");
             const preview = document.getElementById("preview");
             const grid = document.getElementById("grid");
@@ -211,71 +235,55 @@
             let redoStack = [];
             textarea.value = historyStack[0];
             
-            // Bắt sự kiện dán dữ liệu (paste)
+            const beautifyConfig = {
+              "indent_size": 4,
+              "indent_char": " ",
+              "max_preserve_newlines": 1,
+              "preserve_newlines": true,
+              "indent_inner_html": true,
+              "trim_whitespace": true,
+              "end_with_newline": false,
+              "brace_style": "end-of-line"
+            };
+            
             textarea.addEventListener('paste', function(e) {
-              // Lấy nội dung chuẩn bị dán từ clipboard
               const clipboardData = e.clipboardData || window.clipboardData;
               const pastedData = clipboardData.getData('Text');
-              
               if (!pastedData.trim()) return;
-            
-              // Format đoạn code vừa dán
-              const formattedPasted = html_beautify(pastedData, {
-                "indent_size": 4,
-                "indent_char": " ",
-                "max_preserve_newlines": 1,
-                "preserve_newlines": true,
-                "indent_inner_html": true,
-                "trim_whitespace": true,
-                "end_with_newline": false
-              });
-            
-              // Chặn hành vi paste mặc định của trình duyệt để xử lý chèn khoảng trắng thủ công chuẩn xác
               e.preventDefault();
-            
+              let formatted = html_beautify(pastedData, beautifyConfig);
+              formatted = smartInsertSpacing(formatted);
               const start = textarea.selectionStart;
               const end = textarea.selectionEnd;
               const currentContent = textarea.value;
-            
-              // Kiểm tra xem phía trên và phía dưới vị trí con trỏ đã có sẵn khoảng trắng chưa để tránh tạo quá nhiều dòng thừa
               const topText = currentContent.substring(0, start);
               const bottomText = currentContent.substring(end);
-            
-              // Tạo ra đúng 5 dòng trắng phía trên và 5 dòng trắng phía dưới đoạn code dán vào
               const spacingTop = topText.trim() !== "" ? "\n\n\n\n\n" : "";
               const spacingBottom = bottomText.trim() !== "" ? "\n\n\n\n\n" : "";
-            
-              const insertion = spacingTop + formattedPasted + spacingBottom;
-            
-              // Chèn vào vị trí con trỏ
+              const insertion = spacingTop + formatted + spacingBottom;
               textarea.setRangeText(insertion, start, end, 'end');
-              
               handleInput();
             });
             
-            // Hàm format thủ công khi bấm nút "✨ Format" trên thanh công cụ
-            function formatCode() {
+            function smartInsertSpacing(codeText) {
+              const functionRegex = /(\n\s*(?:async\s+)?function\s+[a-zA-Z0-9_$]+\s*\(|\n\s*(?:const|let|var)\s+[a-zA-Z0-9_$]+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>|\n\s*(?:const|let|var)\s+[a-zA-Z0-9_$]+\s*=\s*function\s*\()/g;
+              let spacedCode = codeText.replace(functionRegex, function(match) {
+                return "\n\n\n\n\n" + match.trimStart();
+              });
+              return spacedCode;
+            }
+            
+            function formatAndSpaceFunctions() {
               const rawCode = textarea.value;
               if (!rawCode.trim()) return;
-            
-              const formatted = html_beautify(rawCode, {
-                "indent_size": 4,
-                "indent_char": " ",
-                "max_preserve_newlines": 1,
-                "preserve_newlines": true,
-                "indent_inner_html": true,
-                "trim_whitespace": true,
-                "end_with_newline": false
-              });
-            
-              textarea.value = formatted;
+              let formatted = html_beautify(rawCode, beautifyConfig);
+              textarea.value = smartInsertSpacing(formatted);
               handleInput();
             }
             
             function runCode() {
               const userCode = textarea.value;
               errorLog.style.display = "none";
-              
               const blobContent = `
                 <!DOCTYPE html>
                 <html>
@@ -284,14 +292,9 @@
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
                   <style>
                     html, body { 
-                      margin: 0; 
-                      padding: 0; 
-                      min-height: 100%; 
-                      background: white; 
-                      color: black;
-                      font-family: sans-serif;
-                      overflow-x: hidden;
-                      overflow-y: auto;
+                      margin: 0; padding: 0; min-height: 100%; 
+                      background: white; color: black; font-family: sans-serif; 
+                      overflow-x: hidden; overflow-y: auto; 
                     }
                     #app-wrapper { padding: 15px; box-sizing: border-box; }
                   </style>
@@ -304,7 +307,6 @@
                 </head>
                 <body><div id="app-wrapper">${userCode}</div></body>
                 </html>`;
-            
               const blob = new Blob([blobContent], { type: 'text/html;charset=UTF-8' });
               if (preview.src) URL.revokeObjectURL(preview.src);
               preview.src = URL.createObjectURL(blob);
@@ -325,26 +327,47 @@
                 if (historyStack.length > 50) historyStack.shift();
                 redoStack = [];
               }
-              updateLineNumbers(); 
+              updateUI(); 
             }
             
-            function updateLineNumbers(errorLine = null) {
-              const lines = textarea.value.split('\n').length;
+            function updateUI(errorLine = null) {
+              const codeLines = textarea.value.split('\n');
+              const linesCount = codeLines.length;
               let lineStr = '';
-              for (let i = 1; i <= lines; i++) {
+              let guideStr = '';
+            
+              for (let i = 1; i <= linesCount; i++) {
                 lineStr += `<div style="height:20px" class="${i === errorLine ? 'line-error' : ''}">${i}</div>`;
+                const currentLineText = codeLines[i - 1] || "";
+                let leadingSpaces = 0;
+                for (let char of currentLineText) {
+                  if (char === ' ') leadingSpaces++;
+                  else break;
+                }
+                let lineGuides = '';
+                let indentLevels = Math.floor(leadingSpaces / 4);
+                for (let g = 0; g < indentLevels; g++) {
+                  lineGuides += '<span style="color: #404040;">│   </span>';
+                }
+                guideStr += `<div>${lineGuides}</div>`;
               }
+            
               lineNumbers.innerHTML = lineStr;
+              indentGuides.innerHTML = guideStr;
               syncScroll();
             }
             
-            function syncScroll() { lineNumbers.scrollTop = textarea.scrollTop; }
+            function syncScroll() { 
+              lineNumbers.scrollTop = textarea.scrollTop;
+              indentGuides.scrollTop = textarea.scrollTop;
+              indentGuides.scrollLeft = textarea.scrollLeft;
+            }
             
             function undo() {
               if (historyStack.length > 1) {
                 redoStack.push(historyStack.pop());
                 textarea.value = historyStack[historyStack.length - 1];
-                updateLineNumbers();
+                updateUI();
               }
             }
             
@@ -353,7 +376,7 @@
                 const next = redoStack.pop();
                 historyStack.push(next);
                 textarea.value = next;
-                updateLineNumbers();
+                updateUI();
               }
             }
             
@@ -399,8 +422,8 @@
               const reader = new FileReader();
               reader.onload = (e) => {
                 textarea.value = e.target.result;
-                formatCode(); 
-                alert("Đã tải và format: " + file.name);
+                formatAndSpaceFunctions(); 
+                alert("Đã tải, phân tách hàm và format: " + file.name);
               };
               reader.readAsText(file);
             }
@@ -419,11 +442,11 @@
               if (e.data.type === 'error') {
                 errorLog.style.display = "block";
                 errorLog.innerHTML = `⚠️ Lỗi: ${e.data.msg} (Dòng ${e.data.line})`;
-                updateLineNumbers(e.data.line);
+                updateUI(e.data.line);
               }
             });
             
-            updateLineNumbers();
+            updateUI();
         </script>
     </body>
 
