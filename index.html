@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mini E</title>
+<title>Mini Editor - Auto Format</title>
+<!-- Thư viện js-beautify để hỗ trợ tự động căn chỉnh code HTML -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-html.min.js"></script>
 <style>
   * { box-sizing: border-box; }
   
@@ -35,6 +37,7 @@
   .topbar button { padding: 8px 12px; border: none; border-radius: 6px; background: #333; color: white; cursor: pointer; font-size: 11px; white-space: nowrap; }
   .btn-reload { background: #ce9178 !important; color: #000 !important; font-weight: bold; }
   .btn-history { background: #444 !important; color: #fff !important; }
+  .btn-format { background: #007acc !important; font-weight: bold; }
   .btn-run { background: #28a745 !important; margin-left: auto; font-weight: bold; padding: 8px 20px !important; }
 
   /* HỆ THỐNG TAB */
@@ -95,7 +98,7 @@
     overflow: auto; 
   }
 
-  /* PREVIEW - ĐÃ CHỈNH SỬA ĐỂ HỖ TRỢ CUỘN */
+  /* PREVIEW */
   #pane-preview { 
     flex: 1; 
     padding: 10px; 
@@ -112,7 +115,7 @@
     border-radius: 4px; 
     box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
     display: block;
-    overflow: auto; /* Cho phép cuộn */
+    overflow: auto; 
   }
 
   #error-log { display: none; background: #4a1515; color: #ff9999; padding: 10px; font-family: monospace; font-size: 12px; flex-shrink: 0; }
@@ -154,16 +157,17 @@
 <body>
 
 <div class="topbar">
-  <button class="btn-history" onclick="document.getElementById('file-input').click()">📂 Mở File</button>
+  <button class="btn-history" onclick="document.getElementById('file-input').click()">📂 Mở</button>
   <input type="file" id="file-input" style="display:none" accept=".html,.txt,.css,.js" onchange="loadFile(this)">
   <button class="btn-reload" onclick="resetEditor()">🔄 Reset</button>
   <button class="btn-history" onclick="undo()">↩ Undo</button>
   <button class="btn-history" onclick="redo()">↪ Redo</button>
-  <button onclick="openPopup('quick')">⌨️ Phím nhanh</button>
+  <button class="btn-format" onclick="formatCode()">✨ Format</button>
+  <button onclick="openPopup('quick')">⌨️ Phím</button>
   <button onclick="openPopup('html')">HTML</button>
   <button onclick="openPopup('css')">CSS</button>
   <button onclick="openPopup('js')">JS</button>
-  <button class="btn-run" style="background: #007acc !important;" onclick="saveCurrentFile()">💾 LƯU FILE</button>
+  <button class="btn-run" style="background: #007acc !important;" onclick="saveCurrentFile()">💾 LƯU</button>
   <button class="btn-run" onclick="runCode()">CHẠY ▶</button>
 </div>
 
@@ -201,12 +205,37 @@ const preview = document.getElementById("preview");
 const grid = document.getElementById("grid");
 const popup = document.getElementById("popup");
 
-// Dữ liệu ban đầu
 let historyStack = ["localStorage.clear();\nsessionStorage.clear();\nlocation.reload();"];
 let redoStack = [];
 textarea.value = historyStack[0];
 
-// CẬP NHẬT HÀM CHẠY CODE ĐỂ HỖ TRỢ CUỘN TRONG IFRAME
+// Tự động format ngay khi dán nội dung vào textarea
+textarea.addEventListener('paste', function() {
+  setTimeout(() => {
+    formatCode();
+  }, 50);
+});
+
+// Hàm tự động căn chỉnh & thụt lề code chuẩn xác
+function formatCode() {
+  const rawCode = textarea.value;
+  if (!rawCode.trim()) return;
+
+  // Sử dụng thư viện js-beautify để căn chỉnh lề chống lệch
+  const formatted = html_beautify(rawCode, {
+    "indent_size": 4,
+    "indent_char": " ",
+    "max_preserve_newlines": 1,
+    "preserve_newlines": true,
+    "indent_inner_html": true,
+    "trim_whitespace": true,
+    "end_with_newline": false
+  });
+
+  textarea.value = formatted;
+  handleInput();
+}
+
 function runCode() {
   const userCode = textarea.value;
   errorLog.style.display = "none";
@@ -218,7 +247,6 @@ function runCode() {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        /* Cấu hình để nội dung bên trong iframe tự cuộn */
         html, body { 
           margin: 0; 
           padding: 0; 
@@ -246,7 +274,6 @@ function runCode() {
   preview.src = URL.createObjectURL(blob);
 }
 
-// Chuyển Tab
 function switchTab(type) {
   document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + type).classList.add('active');
@@ -255,7 +282,6 @@ function switchTab(type) {
   if(type === 'preview') runCode();
 }
 
-// Xử lý Editor
 function handleInput() { 
   const val = textarea.value;
   if (val !== historyStack[historyStack.length - 1]) {
@@ -295,7 +321,6 @@ function redo() {
   }
 }
 
-// Công cụ phím tắt
 const data = {
   quick: [{n:"Tab ⮕", a:()=>ins("  ")}, {n:"#", a:()=>ins("#")}, {n:".", a:()=>ins(".")}, {n:"(", a:()=>ins("(")}, {n:")", a:()=>ins(")")}, {n:"&", a:()=>ins("&")}, {n:"/* CSS */", a:()=>ins("/* */")}, {n:"// JS", a:()=>ins("// ")}, {n:"<", a:()=>ins("<")}, {n:">", a:()=>ins(">")}, {n:";", a:()=>ins(";")}, {n:"' '", a:()=>ins("''")}, {n:'" "', a:()=>ins('""')}],
   html: [
@@ -332,15 +357,14 @@ function openPopup(type) {
 
 function closePopup() { popup.style.display = "none"; }
 
-// File System
 function loadFile(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     textarea.value = e.target.result;
-    handleInput();
-    alert("Đã tải: " + file.name);
+    formatCode(); // Tự động format khi tải file lên
+    alert("Đã tải và format: " + file.name);
   };
   reader.readAsText(file);
 }
