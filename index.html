@@ -1,546 +1,393 @@
 <!DOCTYPE html>
 <html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Editor - Auto Format</title>
+<!-- Thư viện js-beautify để hỗ trợ tự động căn chỉnh code HTML -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-html.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  
+  /* Khóa cứng màn hình, không cho body cuộn */
+  body { 
+    margin: 0; 
+    font-family: sans-serif; 
+    display: flex; 
+    flex-direction: column; 
+    height: 100vh; 
+    background: #1a1a1a; 
+    color: white; 
+    overflow: hidden; 
+  }
+  
+  /* THANH CÔNG CỤ */
+  .topbar { 
+    display: flex; 
+    gap: 6px; 
+    padding: 10px; 
+    background: #111; 
+    border-bottom: 1px solid #333; 
+    overflow-x: auto; 
+    align-items: center; 
+    height: 60px; 
+    flex-shrink: 0; 
+    z-index: 10;
+  }
+  .topbar button { padding: 8px 12px; border: none; border-radius: 6px; background: #333; color: white; cursor: pointer; font-size: 11px; white-space: nowrap; }
+  .btn-reload { background: #ce9178 !important; color: #000 !important; font-weight: bold; }
+  .btn-history { background: #444 !important; color: #fff !important; }
+  .btn-format { background: #007acc !important; font-weight: bold; }
+  .btn-run { background: #28a745 !important; margin-left: auto; font-weight: bold; padding: 8px 20px !important; }
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mini Editor - Full Features & Fixed Layout</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-html.min.js"></script>
-        <style>
-            * { box-sizing: border-box; }
-            
-            body { 
-              margin: 0; 
-              font-family: sans-serif; 
-              display: flex; 
-              flex-direction: column; 
-              height: 100vh; 
-              background: #1a1a1a; 
-              color: white; 
-              overflow: hidden; 
-            }
-            
-            .topbar { 
-              display: flex; 
-              gap: 6px; 
-              padding: 10px; 
-              background: #111; 
-              border-bottom: 1px solid #333; 
-              overflow-x: auto; 
-              align-items: center; 
-              height: 60px; 
-              flex-shrink: 0; 
-              z-index: 10;
-            }
-            
-            .topbar button { 
-              padding: 8px 12px; 
-              border: none; 
-              border-radius: 6px; 
-              background: #333; 
-              color: white; 
-              cursor: pointer; 
-              font-size: 11px; 
-              white-space: nowrap; 
-              transition: background 0.2s, transform 0.1s;
-            }
-            .topbar button:hover {
-              background: #555;
-              transform: translateY(-1px);
-            }
-            .topbar button:active {
-              transform: translateY(0);
-            }
-            
-            .btn-reload { background: #ce9178 !important; color: #000 !important; font-weight: bold; }
-            .btn-reload:hover { background: #e0a38b !important; }
-            
-            .btn-history { background: #444 !important; color: #fff !important; }
-            .btn-history:hover { background: #666 !important; }
-            
-            .btn-format { background: #007acc !important; font-weight: bold; }
-            .btn-format:hover { background: #0098ff !important; }
-            
-            .btn-run { background: #28a745 !important; margin-left: auto; font-weight: bold; padding: 8px 20px !important; }
-            .btn-run:hover { background: #32be53 !important; }
-            
-            .tab-bar { 
-              display: flex; 
-              background: #252526; 
-              padding-left: 10px; 
-              gap: 2px; 
-              border-bottom: 1px solid #333; 
-              user-select: none; 
-              height: 40px; 
-              flex-shrink: 0; 
-            }
-            .tab-item { padding: 8px 20px; cursor: pointer; background: #2d2d2d; color: #969696; font-size: 12px; font-weight: 500; border-radius: 5px 5px 0 0; margin-top: 5px; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
-            .tab-item:hover { color: #fff; }
-            .tab-item.active { background: #1e1e1e; color: #ffffff; border-bottom: 2px solid #007acc; }
-            
-            .main-content { 
-              flex: 1; 
-              position: relative; 
-              display: flex; 
-              flex-direction: column; 
-              height: calc(100vh - 100px); 
-            }
-            
-            .window-pane { 
-              display: none; 
-              height: 100%; 
-              width: 100%; 
-              flex-direction: column; 
-            }
-            .window-pane.active { display: flex; }
-            
-            .editor-container { 
-              display: flex; 
-              flex: 1; 
-              background: #1e1e1e; 
-              position: relative; 
-              height: 100%;
-            }
-            
-            .line-numbers { 
-              width: 40px; 
-              padding: 15px 0; 
-              text-align: center; 
-              background: #252526; 
-              color: #858585; 
-              font-family: monospace; 
-              font-size: 14px; 
-              line-height: 20px; 
-              user-select: none; 
-              overflow: hidden; 
-              z-index: 2;
-            }
-            
-            
-            
-            
-            
-            .indent-guides-layer {
-            position: absolute;
-            top: 0;
-            left: 40px;
-            right: 0;
-            bottom: 0;
-            
-            pointer-events: none;
-            
-            font-family: 'Consolas', monospace;
-            font-size: 14px;
-            line-height: 20px;
-            
-            padding: 15px;
-            
-            overflow: hidden;
-            white-space: pre;
-            
-            color: #555;
-            z-index: 1;
-            
-            box-sizing: border-box;
-            }
-            
-            
-            
-            
-            
-            textarea { 
-              flex: 1; 
-              background: transparent; 
-              color: #9cdcfe; 
-              padding: 15px; 
-              font-family: 'Consolas', monospace; 
-              font-size: 14px; 
-              line-height: 20px; 
-              border: none; 
-              outline: none; 
-              resize: none; 
-              white-space: pre; 
-              overflow: auto; 
-              height: 100%; 
-              z-index: 3;
-            }
-            
-            #pane-preview { 
-              flex: 1; 
-              padding: 10px; 
-              background: #1a1a1a; 
-              height: 100%;
-            }
-            
-            iframe { 
-              width: 100%; 
-              height: 100%; 
-              border: none; 
-              background: white; 
-              border-radius: 4px; 
-              box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
-              display: block;
-              overflow: auto; 
-            }
-            
-            #error-log { display: none; background: #4a1515; color: #ff9999; padding: 10px; font-family: monospace; font-size: 12px; flex-shrink: 0; }
-            
-            .popup {
-              display: none; position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); 
-              width: 95%; background: #252526; border: 2px solid #0078d4; padding: 5px; 
-              z-index: 9999; border-radius: 8px; box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
-            }
-            .grid { 
-              display: flex; 
-              flex-flow: column wrap; 
-              height: 70px; 
-              gap: 8px; 
-              margin-top: 5px; 
-              overflow-x: auto; 
-              overflow-y: hidden; 
-              padding: 5px; 
-              align-content: flex-start;
-            }
-            
-            .grid button {
-              flex: 0 0 auto;
-              width: max-content;
-              padding: 4px 12px;
-              height: calc(50% - 5px);
-              white-space: nowrap;
-              border: 1px solid #444;
-              border-radius: 4px;
-              background: #333;
-              color: #ddd;
-              font-size: 12px;
-              font-weight: bold;
-              cursor: pointer;
-              transition: background 0.2s, border-color 0.2s;
-            }
-            .grid button:hover {
-              background: #007acc;
-              border-color: #0098ff;
-              color: #fff;
-            }
-        </style>
-    </head>
+  /* HỆ THỐNG TAB */
+  .tab-bar { 
+    display: flex; 
+    background: #252526; 
+    padding-left: 10px; 
+    gap: 2px; 
+    border-bottom: 1px solid #333; 
+    user-select: none; 
+    height: 40px; 
+    flex-shrink: 0; 
+  }
+  .tab-item { padding: 8px 20px; cursor: pointer; background: #2d2d2d; color: #969696; font-size: 12px; font-weight: 500; border-radius: 5px 5px 0 0; margin-top: 5px; display: flex; align-items: center; gap: 8px; }
+  .tab-item.active { background: #1e1e1e; color: #ffffff; border-bottom: 2px solid #007acc; }
 
-    <body>
+  /* NỘI DUNG CHÍNH */
+  .main-content { 
+    flex: 1; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+    min-height: 0; 
+  }
 
-        <div class="topbar">
-            <button class="btn-history" onclick="document.getElementById('file-input').click()">📂 Mở</button>
-            <input type="file" id="file-input" style="display:none" accept=".html,.txt,.css,.js" onchange="loadFile(this)">
-            <button class="btn-reload" onclick="resetEditor()">🔄 Reset</button>
-            <button class="btn-history" onclick="undo()">↩ Undo</button>
-            <button class="btn-history" onclick="redo()">↪ Redo</button>
-            <button class="btn-format" onclick="formatAndSpaceFunctions()">✨ Phân tách hàm & Format</button>
-            <button onclick="openPopup('quick')">⌨️ Phím</button>
-            <button onclick="openPopup('html')">HTML</button>
-            <button onclick="openPopup('css')">CSS</button>
-            <button onclick="openPopup('js')">JS</button>
-            <button class="btn-run" style="background: #007acc !important;" onclick="saveCurrentFile()">💾 LƯU</button>
-            <button class="btn-run" onclick="runCode()">CHẠY ▶</button>
-        </div>
+  .window-pane { 
+    display: none; 
+    height: 100%; 
+    width: 100%; 
+    flex-direction: column; 
+    min-height: 0; 
+  }
+  .window-pane.active { display: flex; }
 
-        <div class="tab-bar" id="tab-container">
-            <div class="tab-item active" id="tab-editor" onclick="switchTab('editor')">📄 CHỈNH SỬA CODE</div>
-            <div class="tab-item" id="tab-preview" onclick="switchTab('preview')">👁️ KẾT QUẢ</div>
-        </div>
+  /* EDITOR */
+  .editor-container { 
+    display: flex; 
+    flex: 1; 
+    background: #1e1e1e; 
+    overflow: hidden; 
+    position: relative; 
+    min-height: 0;
+  }
+  .line-numbers { width: 40px; padding: 15px 0; text-align: center; background: #252526; color: #858585; font-family: monospace; font-size: 14px; line-height: 20px; user-select: none; overflow: hidden; }
+  
+  textarea { 
+    flex: 1; 
+    background: transparent; 
+    color: #9cdcfe; 
+    padding: 15px; 
+    font-family: 'Consolas', monospace; 
+    font-size: 14px; 
+    line-height: 20px; 
+    border: none; 
+    outline: none; 
+    resize: none; 
+    white-space: pre; 
+    overflow: auto; 
+  }
 
-        <div class="main-content">
-            <div id="pane-editor" class="window-pane active">
-                <div class="editor-container">
-                    <div id="line-numbers" class="line-numbers"></div>
-                    <div id="indent-guides" class="indent-guides-layer"></div>
-                    <textarea id="code" spellcheck="false" oninput="handleInput()" onscroll="syncScroll()"></textarea>
-                </div>
-            </div>
-            <div id="pane-preview" class="window-pane">
-                <iframe id="preview"></iframe>
-            </div>
-            <div id="error-log"></div>
-        </div>
+  /* PREVIEW */
+  #pane-preview { 
+    flex: 1; 
+    padding: 10px; 
+    background: #1a1a1a; 
+    min-height: 0;
+    overflow: hidden;
+  }
+  
+  iframe { 
+    width: 100%; 
+    height: 100%; 
+    border: none; 
+    background: white; 
+    border-radius: 4px; 
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
+    display: block;
+    overflow: auto; 
+  }
 
-        <div class="popup" id="popup">
-            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                <b id="popup-title" style="color:#007acc; font-size:12px;">TOOLS</b>
-                <span onclick="closePopup()" style="color:red; cursor:pointer; font-weight:bold; padding: 2px 8px;">[ĐÓNG]</span>
-            </div>
-            <div class="grid" id="grid"></div>
-        </div>
+  #error-log { display: none; background: #4a1515; color: #ff9999; padding: 10px; font-family: monospace; font-size: 12px; flex-shrink: 0; }
 
-        <script>
-            const textarea = document.getElementById("code");
-            const lineNumbers = document.getElementById("line-numbers");
-            const indentGuides = document.getElementById("indent-guides");
-            const errorLog = document.getElementById("error-log");
-            const preview = document.getElementById("preview");
-            const grid = document.getElementById("grid");
-            const popup = document.getElementById("popup");
-            
-            let historyStack = ["localStorage.clear();\nsessionStorage.clear();\nlocation.reload();"];
-            let redoStack = [];
-            textarea.value = historyStack[0];
-            
-            const beautifyConfig = {
-              "indent_size": 4,
-              "indent_char": " ",
-              "max_preserve_newlines": 1,
-              "preserve_newlines": true,
-              "indent_inner_html": true,
-              "trim_whitespace": true,
-              "end_with_newline": false,
-              "brace_style": "collapse"
-            };
-            
-            textarea.addEventListener('paste', function(e) {
-              const clipboardData = e.clipboardData || window.clipboardData;
-              const pastedData = clipboardData.getData('Text');
-              if (!pastedData.trim()) return;
-              e.preventDefault();
-              let formatted = html_beautify(pastedData, beautifyConfig);
-              formatted = smartInsertSpacing(formatted);
-              const start = textarea.selectionStart;
-              const end = textarea.selectionEnd;
-              const currentContent = textarea.value;
-              const topText = currentContent.substring(0, start);
-              const bottomText = currentContent.substring(end);
-              const spacingTop = topText.trim() !== "" ? "\n\n\n\n\n" : "";
-              const spacingBottom = bottomText.trim() !== "" ? "\n\n\n\n\n" : "";
-              const insertion = spacingTop + formatted + spacingBottom;
-              textarea.setRangeText(insertion, start, end, 'end');
-              handleInput();
-            });
+  /* POPUP TOOLS */
+  .popup {
+    display: none; position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); 
+    width: 95%; background: #252526; border: 2px solid #0078d4; padding: 5px; 
+    z-index: 9999; border-radius: 8px; box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
+  }
+  .grid { 
+    display: flex; 
+    flex-flow: column wrap; 
+    height: 70px; 
+    gap: 8px; 
+    margin-top: 5px; 
+    overflow-x: auto; 
+    overflow-y: hidden; 
+    padding: 5px; 
+    align-content: flex-start;
+  }
 
+  .grid button {
+    flex: 0 0 auto;
+    width: max-content;
+    padding: 4px 12px;
+    height: calc(50% - 5px);
+    white-space: nowrap;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background: #333;
+    color: #ddd;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
 
+<div class="topbar">
+  <button class="btn-history" onclick="document.getElementById('file-input').click()">📂 Mở</button>
+  <input type="file" id="file-input" style="display:none" accept=".html,.txt,.css,.js" onchange="loadFile(this)">
+  <button class="btn-reload" onclick="resetEditor()">🔄 Reset</button>
+  <button class="btn-history" onclick="undo()">↩ Undo</button>
+  <button class="btn-history" onclick="redo()">↪ Redo</button>
+  <button class="btn-format" onclick="formatCode()">✨ Format</button>
+  <button onclick="openPopup('quick')">⌨️ Phím</button>
+  <button onclick="openPopup('html')">HTML</button>
+  <button onclick="openPopup('css')">CSS</button>
+  <button onclick="openPopup('js')">JS</button>
+  <button class="btn-run" style="background: #007acc !important;" onclick="saveCurrentFile()">💾 LƯU</button>
+  <button class="btn-run" onclick="runCode()">CHẠY ▶</button>
+</div>
 
+<div class="tab-bar" id="tab-container">
+  <div class="tab-item active" id="tab-editor" onclick="switchTab('editor')">📄 CHỈNH SỬA CODE</div>
+  <div class="tab-item" id="tab-preview" onclick="switchTab('preview')">👁️ KẾT QUẢ</div>
+</div>
 
-function smartInsertSpacing(codeText) {
-              const functionRegex = /(\n\s*(?:async\s+)?function\s+[a-zA-Z0-9_$]+\s*\(|\n\s*(?:const|let|var)\s+[a-zA-Z0-9_$]+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>|\n\s*(?:const|let|var)\s+[a-zA-Z0-9_$]+\s*=\s*function\s*\()/g;
-              let spacedCode = codeText.replace(functionRegex, function(match) {
-                return "\n\n\n\n\n" + match.trimStart();
-              });
-              return spacedCode;
-            }
+<div class="main-content">
+  <div id="pane-editor" class="window-pane active">
+    <div class="editor-container">
+      <div id="line-numbers" class="line-numbers"></div>
+      <textarea id="code" spellcheck="false" oninput="handleInput()" onscroll="syncScroll()"></textarea>
+    </div>
+  </div>
+  <div id="pane-preview" class="window-pane">
+    <iframe id="preview"></iframe>
+  </div>
+  <div id="error-log"></div>
+</div>
 
+<div class="popup" id="popup">
+  <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+    <b id="popup-title" style="color:#007acc; font-size:12px;">TOOLS</b>
+    <span onclick="closePopup()" style="color:red; cursor:pointer; font-weight:bold; padding: 2px 8px;">[ĐÓNG]</span>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
 
+<script>
+const textarea = document.getElementById("code");
+const lineNumbers = document.getElementById("line-numbers");
+const errorLog = document.getElementById("error-log");
+const preview = document.getElementById("preview");
+const grid = document.getElementById("grid");
+const popup = document.getElementById("popup");
 
+let historyStack = ["localStorage.clear();\nsessionStorage.clear();\nlocation.reload();"];
+let redoStack = [];
+textarea.value = historyStack[0];
 
-function formatAndSpaceFunctions() {
-              const rawCode = textarea.value;
-              if (!rawCode.trim()) return;
-              let formatted = html_beautify(rawCode, beautifyConfig);
-              textarea.value = smartInsertSpacing(formatted);
-              handleInput();
-            }
+// Tự động format ngay khi dán nội dung vào textarea
+textarea.addEventListener('paste', function() {
+  setTimeout(() => {
+    formatCode();
+  }, 50);
+});
 
+// Hàm tự động căn chỉnh & thụt lề code chuẩn xác
+function formatCode() {
+  const rawCode = textarea.value;
+  if (!rawCode.trim()) return;
 
+  // Sử dụng thư viện js-beautify để căn chỉnh lề chống lệch
+  const formatted = html_beautify(rawCode, {
+    "indent_size": 4,
+    "indent_char": " ",
+    "max_preserve_newlines": 1,
+    "preserve_newlines": true,
+    "indent_inner_html": true,
+    "trim_whitespace": true,
+    "end_with_newline": false
+  });
 
+  textarea.value = formatted;
+  handleInput();
+}
 
 function runCode() {
-              const userCode = textarea.value;
-              errorLog.style.display = "none";
-              const blobContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <meta charset="UTF-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <style>
-                    html, body { 
-                      margin: 0; padding: 0; min-height: 100%; 
-                      background: white; color: black; font-family: sans-serif; 
-                      overflow-x: hidden; overflow-y: auto; 
-                    }
-                    #app-wrapper { padding: 15px; box-sizing: border-box; }
-                  </style>
-                  <script>
-                    window.onerror=function(m,u,l,c){
-                      window.parent.postMessage({type:'error',msg:m,line:l,col:c},'*');
-                      return true;
-                    };
-                  <\/script>
-                </head>
-                <body><div id="app-wrapper">${userCode}</div></body>
-                </html>`;
-              const blob = new Blob([blobContent], { type: 'text/html;charset=UTF-8' });
-              if (preview.src) URL.revokeObjectURL(preview.src);
-              preview.src = URL.createObjectURL(blob);
-            }
+  const userCode = textarea.value;
+  errorLog.style.display = "none";
+  
+  const blobContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        html, body { 
+          margin: 0; 
+          padding: 0; 
+          min-height: 100%; 
+          background: white; 
+          color: black;
+          font-family: sans-serif;
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+        #app-wrapper { padding: 15px; box-sizing: border-box; }
+      </style>
+      <script>
+        window.onerror=function(m,u,l,c){
+          window.parent.postMessage({type:'error',msg:m,line:l,col:c},'*');
+          return true;
+        };
+      <\/script>
+    </head>
+    <body><div id="app-wrapper">${userCode}</div></body>
+    </html>`;
 
-
-
+  const blob = new Blob([blobContent], { type: 'text/html;charset=UTF-8' });
+  if (preview.src) URL.revokeObjectURL(preview.src);
+  preview.src = URL.createObjectURL(blob);
+}
 
 function switchTab(type) {
-              document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-              document.getElementById('tab-' + type).classList.add('active');
-              document.querySelectorAll('.window-pane').forEach(p => p.classList.remove('active'));
-              document.getElementById('pane-' + type).classList.add('active');
-              if(type === 'preview') runCode();
-            }
-
-
-
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + type).classList.add('active');
+  document.querySelectorAll('.window-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + type).classList.add('active');
+  if(type === 'preview') runCode();
+}
 
 function handleInput() { 
-              const val = textarea.value;
-              if (val !== historyStack[historyStack.length - 1]) {
-                historyStack.push(val);
-                if (historyStack.length > 50) historyStack.shift();
-                redoStack = [];
-              }
-              updateUI(); 
-            }
+  const val = textarea.value;
+  if (val !== historyStack[historyStack.length - 1]) {
+    historyStack.push(val);
+    if (historyStack.length > 50) historyStack.shift();
+    redoStack = [];
+  }
+  updateLineNumbers(); 
+}
 
+function updateLineNumbers(errorLine = null) {
+  const lines = textarea.value.split('\n').length;
+  let lineStr = '';
+  for (let i = 1; i <= lines; i++) {
+    lineStr += `<div style="height:20px" class="${i === errorLine ? 'line-error' : ''}">${i}</div>`;
+  }
+  lineNumbers.innerHTML = lineStr;
+  syncScroll();
+}
 
-
-
-function updateUI(errorLine = null) {
-            const codeLines = textarea.value.split('\n');
-            const linesCount = codeLines.length;
-            
-            let lineStr = '';
-            let guideStr = '';
-            
-            for (let i = 0; i < linesCount; i++) { const lineNumber=i + 1; const currentLineText=codeLines[i] || '' ; // Số dòng lineStr +=`<div style="height:20px" class="${lineNumber === errorLine ? 'line-error' : ''}">${lineNumber}</div>`;
-            
-                // Tính số khoảng trắng đầu dòng
-                let leadingSpaces = 0;
-                for (let char of currentLineText) {
-                if (char === ' ') leadingSpaces++;
-                else break;
-                }
-            
-                const indentLevels = Math.floor(leadingSpaces / 4);
-            
-                // Luôn vẽ vạch dọc (kể cả dòng trống)
-                let lineGuides = '';
-                for (let g = 0; g < indentLevels; g++) { lineGuides +='<span style="color:#555;display:inline-block; width:4ch;">│ </span>' ; } guideStr +=`<div style="height:20px">${lineGuides}</div>`;
-                    }
-            
-                    lineNumbers.innerHTML = lineStr;
-                    indentGuides.innerHTML = guideStr;
-                    syncScroll();
-                    }
-
-
-
-
-function syncScroll() { 
-              lineNumbers.scrollTop = textarea.scrollTop;
-              indentGuides.scrollTop = textarea.scrollTop;
-              indentGuides.scrollLeft = textarea.scrollLeft;
-            }
-
-
-
+function syncScroll() { lineNumbers.scrollTop = textarea.scrollTop; }
 
 function undo() {
-              if (historyStack.length > 1) {
-                redoStack.push(historyStack.pop());
-                textarea.value = historyStack[historyStack.length - 1];
-                updateUI();
-              }
-            }
-
-
-
+  if (historyStack.length > 1) {
+    redoStack.push(historyStack.pop());
+    textarea.value = historyStack[historyStack.length - 1];
+    updateLineNumbers();
+  }
+}
 
 function redo() {
-              if (redoStack.length > 0) {
-                const next = redoStack.pop();
-                historyStack.push(next);
-                textarea.value = next;
-                updateUI();
-              }
-            }
-            
-            const data = {
-              quick: [{n:"Tab ⮕", a:()=>ins("  ")}, {n:"#", a:()=>ins("#")}, {n:".", a:()=>ins(".")}, {n:"(", a:()=>ins("(")}, {n:")", a:()=>ins(")")}, {n:"&", a:()=>ins("&")}, {n:"/* CSS */", a:()=>ins("/* */")}, {n:"// JS", a:()=>ins("// ")}, {n:"<", a:()=>ins("<")}, {n:">", a:()=>ins(">")}, {n:";", a:()=>ins(";")}, {n:"' '", a:()=>ins("''")}, {n:'" "', a:()=>ins('""')}],
-              html: [
-                {n:'id=""', a:()=>ins('id=""')}, {n:'class=""', a:()=>ins('class=""')}, {n:'src=""', a:()=>ins('src=""')}, {n:'href=""', a:()=>ins('href=""')}, 
-                {n:"<div>", a:()=>ins("<div></div>")}, {n:"<span>", a:()=>ins("<span></span>")}, {n:"<h1>", a:()=>ins("<h1></h1>")}, {n:"<p>", a:()=>ins("<p></p>")}, 
-                {n:"<a>", a:()=>ins("<a></a>")}, {n:"<img>", a:()=>ins('<img src="" alt="">')}, {n:"<script>", a:()=>ins("<script>\n\n<\/script>")}, {n:"<style>", a:()=>ins("<style>\n\n</style>")}
-              ],
-              css: [{n:"f-size", a:()=>ins("font-size: 16px;")}, {n:"color", a:()=>ins('color: #ffffff;')}, {n:"flex", a:()=>ins("display: flex;")}, {n:"padding", a:()=>ins("padding: 10px;")}, {n:"border", a:()=>ins("border: 1px solid #444;")}],
-              js: [{n:"log", a:()=>ins('console.log("");')}, {n:"alert", a:()=>ins('alert("");')}, {n:"getById", a:()=>ins('document.getElementById("");')}]
-            };
+  if (redoStack.length > 0) {
+    const next = redoStack.pop();
+    historyStack.push(next);
+    textarea.value = next;
+    updateLineNumbers();
+  }
+}
 
-
-
+const data = {
+  quick: [{n:"Tab ⮕", a:()=>ins("  ")}, {n:"#", a:()=>ins("#")}, {n:".", a:()=>ins(".")}, {n:"(", a:()=>ins("(")}, {n:")", a:()=>ins(")")}, {n:"&", a:()=>ins("&")}, {n:"/* CSS */", a:()=>ins("/* */")}, {n:"// JS", a:()=>ins("// ")}, {n:"<", a:()=>ins("<")}, {n:">", a:()=>ins(">")}, {n:";", a:()=>ins(";")}, {n:"' '", a:()=>ins("''")}, {n:'" "', a:()=>ins('""')}],
+  html: [
+    {n:'id=""', a:()=>ins('id=""')}, {n:'class=""', a:()=>ins('class=""')}, {n:'src=""', a:()=>ins('src=""')}, {n:'href=""', a:()=>ins('href=""')}, 
+    {n:"<div>", a:()=>ins("<div></div>")}, {n:"<span>", a:()=>ins("<span></span>")}, {n:"<h1>", a:()=>ins("<h1></h1>")}, {n:"<p>", a:()=>ins("<p></p>")}, 
+    {n:"<a>", a:()=>ins("<a></a>")}, {n:"<img>", a:()=>ins('<img src="" alt="">')}, {n:"<script>", a:()=>ins("<script>\n\n<\/script>")}, {n:"<style>", a:()=>ins("<style>\n\n</style>")}
+  ],
+  css: [{n:"f-size", a:()=>ins("font-size: 16px;")}, {n:"color", a:()=>ins('color: #ffffff;')}, {n:"flex", a:()=>ins("display: flex;")}, {n:"padding", a:()=>ins("padding: 10px;")}, {n:"border", a:()=>ins("border: 1px solid #444;")}],
+  js: [{n:"log", a:()=>ins('console.log("");')}, {n:"alert", a:()=>ins('alert("");')}, {n:"getById", a:()=>ins('document.getElementById("");')}]
+};
 
 function ins(val) {
-              const s = textarea.selectionStart, e = textarea.selectionEnd;
-              textarea.setRangeText(val, s, e, 'end');
-              let newPos = s + val.length;
-              if (val.includes('></')) newPos = s + val.indexOf('>') + 1;
-              else if (val.endsWith('""') || val.endsWith('()') || val.endsWith('{}')) newPos = s + val.length - 1;
-              else if (val.endsWith('=""')) newPos = s + val.length - 1;
-              setTimeout(() => { textarea.focus(); textarea.setSelectionRange(newPos, newPos); }, 10);
-              handleInput();
-            }
-
-
-
+  const s = textarea.selectionStart, e = textarea.selectionEnd;
+  textarea.setRangeText(val, s, e, 'end');
+  let newPos = s + val.length;
+  if (val.includes('></')) newPos = s + val.indexOf('>') + 1;
+  else if (val.endsWith('""') || val.endsWith('()') || val.endsWith('{}')) newPos = s + val.length - 1;
+  else if (val.endsWith('=""')) newPos = s + val.length - 1;
+  setTimeout(() => { textarea.focus(); textarea.setSelectionRange(newPos, newPos); }, 10);
+  handleInput();
+}
 
 function openPopup(type) {
-              popup.style.display = "block";
-              document.getElementById("popup-title").innerText = type.toUpperCase();
-              grid.innerHTML = '';
-              data[type].forEach(item => {
-                const btn = document.createElement('button');
-                btn.innerText = item.n;
-                btn.onclick = item.a;
-                grid.appendChild(btn);
-              });
-            }
-
-
-
+  popup.style.display = "block";
+  document.getElementById("popup-title").innerText = type.toUpperCase();
+  grid.innerHTML = '';
+  data[type].forEach(item => {
+    const btn = document.createElement('button');
+    btn.innerText = item.n;
+    btn.onclick = item.a;
+    grid.appendChild(btn);
+  });
+}
 
 function closePopup() { popup.style.display = "none"; }
 
-
-
-
 function loadFile(input) {
-              const file = input.files[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                textarea.value = e.target.result;
-                formatAndSpaceFunctions(); 
-                alert("Đã tải, phân tách hàm và format: " + file.name);
-              };
-              reader.readAsText(file);
-            }
-
-
-
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    textarea.value = e.target.result;
+    formatCode(); // Tự động format khi tải file lên
+    alert("Đã tải và format: " + file.name);
+  };
+  reader.readAsText(file);
+}
 
 function saveCurrentFile() {
-              const blob = new Blob([textarea.value], { type: "text/plain" });
-              const a = document.createElement("a");
-              a.download = "index.html";
-              a.href = URL.createObjectURL(blob);
-              a.click();
-            }
-
-
-
+  const blob = new Blob([textarea.value], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.download = "index.html";
+  a.href = URL.createObjectURL(blob);
+  a.click();
+}
 
 function resetEditor() { if(confirm("Reset code?")) { textarea.value = ""; handleInput(); } }
-            
-            window.addEventListener('message', (e) => {
-              if (e.data.type === 'error') {
-                errorLog.style.display = "block";
-                errorLog.innerHTML = `⚠️ Lỗi: ${e.data.msg} (Dòng ${e.data.line})`;
-                updateUI(e.data.line);
-              }
-            });
-            
-            updateUI();
-        </script>
-    </body>
 
+window.addEventListener('message', (e) => {
+  if (e.data.type === 'error') {
+    errorLog.style.display = "block";
+    errorLog.innerHTML = `⚠️ Lỗi: ${e.data.msg} (Dòng ${e.data.line})`;
+    updateLineNumbers(e.data.line);
+  }
+});
+
+updateLineNumbers();
+</script>
+</body>
 </html>
